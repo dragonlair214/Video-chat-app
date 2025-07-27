@@ -30,10 +30,16 @@ app.get('/:room', (req, res) => {
   res.render('room', { roomId: req.params.room });
 });
 
+// Handle WebSocket connections
 io.on('connection', socket => {
   socket.on('join-room', (roomId, userId) => {
     socket.join(roomId);
     socket.to(roomId).emit('user-connected', userId);
+
+    // 📨 Handle incoming chat messages
+    socket.on('chat-message', message => {
+      socket.to(roomId).emit('chat-message', `Stranger: ${message}`);
+    });
 
     socket.on('disconnect', () => {
       socket.to(roomId).emit('user-disconnected', userId);
@@ -41,6 +47,7 @@ io.on('connection', socket => {
   });
 });
 
+// Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
