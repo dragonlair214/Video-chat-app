@@ -25,13 +25,53 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 2rem;
+      padding-top: 5rem;
+      padding-bottom: 8rem;
+    }
+
+    /* Header / Navbar */
+    nav {
+      width: 100%;
+      background-color: transparent;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.2rem 2rem;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .logo {
+      font-weight: bold;
+      font-size: 1.5rem;
+      color: #1b4332;
+    }
+
+    .nav-links a {
+      margin-left: 20px;
+      text-decoration: none;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .login-btn {
+      padding: 8px 18px;
+      border: 1px solid #1b4332;
+      background: none;
+      color: #1b4332;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
     }
 
     h1 {
       margin-bottom: 1rem;
       font-size: 2rem;
       color: #1b4332;
+      margin-top: 1rem;
     }
 
     #video-grid {
@@ -40,6 +80,7 @@
       gap: 20px;
       width: 100%;
       max-width: 1200px;
+      padding: 1rem;
     }
 
     video {
@@ -51,6 +92,7 @@
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
       border: 3px solid #c9f4e4;
     }
+
     #chat-container {
       position: fixed;
       bottom: 0;
@@ -58,9 +100,10 @@
       width: 100%;
       background: #fff;
       border-top: 1px solid #ccc;
-      padding: 10px;
+      padding: 10px 20px;
       box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
     }
+
     #messages {
       list-style: none;
       margin: 0;
@@ -69,16 +112,19 @@
       overflow-y: auto;
       font-size: 14px;
     }
+
     #chat-form {
       display: flex;
       margin-top: 5px;
     }
+
     #message-input {
       flex: 1;
       padding: 8px;
       border: 1px solid #ccc;
       border-radius: 4px;
     }
+
     #chat-form button {
       padding: 8px 12px;
       margin-left: 5px;
@@ -90,8 +136,21 @@
     }
   </style>
 </head>
+
 <body>
-  <h1>Welcome to the TCC Video Room</h1>
+  <!-- Header/Navbar -->
+  <nav>
+    <div class="logo">OpenChatU</div>
+    <div class="nav-links">
+      <a href="#">Home</a>
+      <a href="#">Counseling</a>
+      <a href="#">Schedule</a>
+      <a href="#">Support</a>
+      <button class="login-btn">Logout</button>
+    </div>
+  </nav>
+
+  <h1>Welcome to the OpenChatU Video Room</h1>
   <div id="video-grid"></div>
 
   <div id="chat-container">
