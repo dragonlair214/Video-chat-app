@@ -14,15 +14,15 @@ const myVideo = document.createElement('video');
 myVideo.muted = true;
 
 const peers = {};            // userId -> MediaConnection
-let myStream = null;         // local camera/mic stream
-let screenStream = null;     // active screen stream (if any)
+let myStream = null;         // local cam/mic stream
+let screenStream = null;     // active screen share stream
 let screenSharing = false;
 
-// Controls (must exist in your HTML)
-const muteBtn  = document.getElementById('muteBtn');
-const videoBtn = document.getElementById('videoBtn');
-const shareBtn = document.getElementById('shareBtn');
-const leaveBtn = document.getElementById('leaveBtn');
+// Toolbar controls (IDs from your HTML)
+const muteBtn  = document.getElementById('toggle-mic');
+const videoBtn = document.getElementById('toggle-cam');
+const shareBtn = document.getElementById('share-screen');
+const leaveBtn = document.getElementById('leave');
 
 // ------------------ Media acquisition ------------------
 navigator.mediaDevices.enumerateDevices()
@@ -41,7 +41,7 @@ navigator.mediaDevices.enumerateDevices()
     myStream = stream;
     addVideoStream(myVideo, myStream);
 
-    // Answer calls
+    // Answer incoming calls
     myPeer.on('call', call => {
       call.answer(myStream);
       const video = document.createElement('video');
@@ -49,7 +49,7 @@ navigator.mediaDevices.enumerateDevices()
       call.on('close', () => video.remove());
     });
 
-    // New user joined
+    // Connect to new users
     socket.on('user-connected', userId => connectToNewUser(userId, myStream));
   })
   .catch(err => {
@@ -57,7 +57,7 @@ navigator.mediaDevices.enumerateDevices()
     alert('Could not access camera or microphone:\n' + err.message);
   });
 
-// Handle remote leaves
+// Remote user left
 socket.on('user-disconnected', userId => {
   if (peers[userId]) {
     peers[userId].close();
@@ -65,7 +65,7 @@ socket.on('user-disconnected', userId => {
   }
 });
 
-// Join room
+// Join the room
 myPeer.on('open', id => {
   socket.emit('join-room', ROOM_ID, id);
 });
@@ -88,7 +88,7 @@ function addVideoStream(video, stream) {
 }
 
 // ------------------ Controls ------------------
-// Toggle Mute / Unmute
+// Mute / Unmute mic
 if (muteBtn) {
   muteBtn.addEventListener('click', () => {
     if (!myStream) return;
@@ -100,7 +100,7 @@ if (muteBtn) {
   });
 }
 
-// Toggle Video On / Off
+// Stop / Start camera
 if (videoBtn) {
   videoBtn.addEventListener('click', () => {
     if (!myStream) return;
@@ -108,29 +108,27 @@ if (videoBtn) {
     if (!videoTrack) return;
 
     videoTrack.enabled = !videoTrack.enabled;
-    videoBtn.textContent = videoTrack.enabled ? '📷 Stop Video' : '📷 Start Video';
+    videoBtn.textContent = videoTrack.enabled ? '🎥 Stop Video' : '🎥 Start Video';
   });
 }
 
-// Share Screen (swap outgoing video track on all connections)
+// Share / Stop screen share
 if (shareBtn) {
   shareBtn.addEventListener('click', async () => {
     try {
       if (!screenSharing) {
-        // Start screen share
+        // Start sharing
         screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
         const screenTrack = screenStream.getVideoTracks()[0];
 
         replaceOutgoingVideoTrack(screenTrack);
         screenSharing = true;
-        shareBtn.textContent = '🖥️ Stop Sharing';
+        shareBtn.textContent = '🛑 Stop Sharing';
 
-        // When user stops from browser UI
-        screenTrack.onended = () => {
-          stopScreenShare();
-        };
+        // If user stops sharing from browser UI
+        screenTrack.onended = () => stopScreenShare();
       } else {
-        // Stop sharing, revert to camera
+        // Stop sharing (revert to camera)
         stopScreenShare();
       }
     } catch (e) {
@@ -144,48 +142,42 @@ function stopScreenShare() {
   const camTrack = myStream?.getVideoTracks()?.[0];
   if (camTrack) replaceOutgoingVideoTrack(camTrack);
 
-  // stop the screen stream tracks
   screenStream?.getTracks().forEach(t => t.stop());
   screenStream = null;
   screenSharing = false;
   if (shareBtn) shareBtn.textContent = '🖥️ Share Screen';
 }
 
-// Replace the video track being sent to all peers
+// Swap the video track being *sent* to all peers
 function replaceOutgoingVideoTrack(newTrack) {
-  // Update our local preview (myVideo)
-  const senderTrackLabel = newTrack.label || 'video';
-  const newStream = new MediaStream([newTrack, ...myStream.getAudioTracks()]);
-  myVideo.srcObject = newStream;
+  // Update local preview to reflect the new outgoing track
+  const newPreviewStream = new MediaStream([newTrack, ...myStream.getAudioTracks()]);
+  myVideo.srcObject = newPreviewStream;
 
-  // For every active peer connection, swap the sender track
+  // For every active RTCPeerConnection, replace the video sender's track
   Object.values(peers).forEach(call => {
-    const pc = call.peerConnection;         // RTCPeerConnection (PeerJS)
+    const pc = call.peerConnection;
     const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
     if (sender) sender.replaceTrack(newTrack);
   });
 }
 
-// Leave room (stop tracks, close peers, disconnect, redirect)
+// Leave room: stop tracks, close peers, disconnect
 if (leaveBtn) {
   leaveBtn.addEventListener('click', () => {
     try {
-      // stop our local tracks
       myStream?.getTracks().forEach(t => t.stop());
       screenStream?.getTracks().forEach(t => t.stop());
 
-      // close all calls
       Object.values(peers).forEach(call => call.close());
       for (const k in peers) delete peers[k];
 
-      // disconnect transports
       socket.disconnect();
       myPeer.disconnect();
       myPeer.destroy();
     } catch (e) {
       console.warn('Error while leaving:', e);
     } finally {
-      // navigate away
       window.location.href = 'index.html';
     }
   });
@@ -217,4 +209,5 @@ if (chatForm && messageInput && messagesList) {
     messagesList.scrollTop = messagesList.scrollHeight;
   }
 }
+
 
