@@ -1,0 +1,3 @@
+runtime: php
+env: flex
+entrypoint: serve index.php
