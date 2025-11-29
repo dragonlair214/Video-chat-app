@@ -4,9 +4,8 @@ const videoGrid = document.getElementById('video-grid');
 
 const myPeer = new Peer(undefined, {
   host: location.hostname,
-  port: location.protocol === 'https:' ? 443 : 3000,
   path: '/peerjs',
-  secure: location.protocol === 'https:',
+  secure: true,
   config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
 });
 
