@@ -117,7 +117,7 @@ $stmt->close();
 <body>
 <header class="top">
   <strong>OpenChatU • Counselor</strong>
-   <a class="btn" href="room.php">Go to Room</a>
+   <a class="btn" href="room.ejs">Go to Room</a>
   <a class="btn" href="logout.php">Log out</a>
 </header>
 
