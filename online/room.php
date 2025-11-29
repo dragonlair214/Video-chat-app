@@ -1,0 +1,177 @@
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OpenChatU • Video Room</title>
+
+  <!-- Your room scripts (unchanged) -->
+  <script>const ROOM_ID = "<%= roomId %>";</script>
+  <script defer src="https://unpkg.com/peerjs@1.2.0/dist/peerjs.min.js"></script>
+  <script defer src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script defer src="/script.js"></script>
+
+  <style>
+    :root{
+      --ink:#2f3e3d;            /* deep gray-green */
+      --muted:#5d6e6c;          /* muted slate */
+      --brand:#4a7c77;          /* calming teal */
+      --accent:#c8b7e6;         /* gentle lavender */
+      --card:#ffffff;           /* surfaces */
+      --ring:#4a7c77;           /* focus ring */
+      --line:#e3ecea;           /* borders */
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1200px 600px at 50% -10%, #e7f7f5, transparent 60%),
+        linear-gradient(135deg, #fdfcfb, #e7f7f5);
+      display:flex; flex-direction:column;
+    }
+
+    /* Sticky translucent header (matches index/login) */
+    header{
+      position:sticky; top:0; z-index:20;
+      background:rgba(255,255,255,.7); backdrop-filter:blur(8px);
+      border-bottom:1px solid var(--line);
+    }
+    .nav{
+      max-width:1100px; margin:0 auto; padding:14px 18px;
+      display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    }
+    .brand{display:flex; align-items:center; gap:.6rem; text-decoration:none; color:var(--brand); font-weight:700}
+    .brand svg{width:28px; height:28px}
+    .links a{margin-left:18px; text-decoration:none; color:var(--ink); font-weight:600}
+    .btn{
+      appearance:none; border-radius:999px; padding:.55rem .9rem; font-weight:700; cursor:pointer;
+      border:1.5px solid var(--brand); color:var(--brand); background:transparent;
+      transition:background .2s, color .2s, filter .2s, transform .06s ease;
+    }
+    .btn.primary{background:var(--brand); color:#fff}
+    .btn.secondary{background:var(--accent); border-color:var(--accent); color:#fff}
+    .btn:hover{filter:brightness(1.03); transform:translateY(-1px)}
+    .btn:focus-visible{outline:3px solid var(--ring); outline-offset:2px}
+
+    /* Page content area */
+    main{flex:1; width:100%}
+    .wrap{max-width:1200px; margin:0 auto; padding:24px 18px 140px}
+
+    h1{
+      text-align:center; font-size:clamp(1.6rem, 3.5vw, 2rem); margin:6px 0 14px;
+      color:var(--brand);
+    }
+    .sub-hint{color:var(--muted); text-align:center; margin:0 0 18px}
+
+    /* Video grid as cards */
+    #video-grid{
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));
+      gap:18px;
+    }
+    video{
+      width:100%; height:100%; background:#000; object-fit:cover;
+      border-radius:16px; border:2px solid var(--accent);
+      box-shadow:0 12px 28px rgba(0,0,0,.08);
+    }
+
+    /* Bottom chat bar (card look) */
+    #chat-container{
+      position:fixed; left:0; right:0; bottom:0; z-index:15;
+      background:var(--card);
+      border-top:1px solid var(--line);
+      box-shadow:0 -8px 20px rgba(0,0,0,.06);
+      padding:12px 16px;
+    }
+    .chat-inner{
+      max-width:1100px; margin:0 auto;
+    }
+    #messages{
+      list-style:none; margin:0 0 8px 0; padding:0;
+      max-height:150px; overflow-y:auto; font-size:.95rem; color:var(--ink);
+    }
+    #messages li{padding:6px 8px; border-radius:10px; background:#f6fbfa; border:1px solid var(--line); margin-bottom:6px}
+    #chat-form{display:flex; gap:8px}
+    #message-input{
+      flex:1; padding:10px 12px; border-radius:10px; border:1px solid #cfdad8; background:#fff; color:var(--ink); font-size:.95rem;
+    }
+    #message-input:focus{outline:none; border-color:var(--brand); box-shadow:0 0 0 4px rgba(74,124,119,.14)}
+    #chat-form button{
+      padding:10px 14px; border:none; border-radius:999px; font-weight:700; cursor:pointer;
+      background:linear-gradient(135deg, var(--brand), var(--accent)); color:#fff;
+    }
+
+    /* Optional top utility controls bar (style only; hook in your JS if you like) */
+    .toolbar{
+      display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:8px 0 16px;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .8rem; border-radius:999px;
+      background:#f2faf7; border:1px solid var(--line); color:var(--ink); font-weight:600; cursor:pointer;
+    }
+    .pill:hover{filter:brightness(1.03)}
+  </style>
+</head>
+
+<body>
+  <!-- Header -->
+  <header>
+    <div class="nav" aria-label="Primary">
+      <a class="brand" href="index.php">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <path d="M7 13c2 2 8 2 10-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>OpenChatU</span>
+      </a>
+      <div class="links">
+        <a href="index.php">Home</a>
+        <a href="index.html#services">Counseling</a>
+        <a href="index.html#services">Schedule</a>
+        <a href="index.html#contact">Support</a>
+        <button class="btn">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main>
+    <div class="wrap">
+      <h1>Welcome to the OpenChatU Video Room</h1>
+      <p class="sub-hint">Your session is private and encrypted. Be sure your mic and camera permissions are enabled.</p>
+
+      <!-- Optional controls; wire up in /script.js if desired -->
+      <div class="toolbar" aria-label="Call controls">
+        <button class="pill" id="toggle-mic">🎤 Mute</button>
+        <button class="pill" id="toggle-cam">🎥 Stop Video</button>
+        <button class="pill" id="share-screen">🖥️ Share Screen</button>
+        <button class="pill" id="leave" style="background:#fff0f0;border-color:#f0caca">🚪 Leave</button>
+      </div>
+
+      <div id="video-grid"></div>
+    </div>
+  </main>
+
+  <!-- Chat -->
+  <div id="chat-container" role="region" aria-label="Session chat">
+    <div class="chat-inner">
+      <ul id="messages"></ul>
+      <form id="chat-form" autocomplete="off">
+        <input id="message-input" placeholder="Type a message…" />
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
