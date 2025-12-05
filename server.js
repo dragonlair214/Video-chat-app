@@ -51,8 +51,34 @@ app.get('/', (req, res) => {
   res.redirect(`/${uuidV4()}`);
 });
 
-app.get('/:room', (req, res) => {
-  res.render('room', { roomId: req.params.room });
+// ---------------
+// IMPORTANT FIX:
+// Pass counselorId + counselorName into room.ejs
+// ---------------
+app.get('/:room', async (req, res) => {
+  const counselorId = req.query.counselor_id || null;
+  let counselorName = null;
+
+  // Load counselor name from database
+  if (counselorId) {
+    try {
+      const [rows] = await db.query(
+        "SELECT name FROM counselors WHERE id = ? LIMIT 1",
+        [counselorId]
+      );
+      if (rows.length > 0) {
+        counselorName = rows[0].name;
+      }
+    } catch (err) {
+      console.error("Name fetch error:", err);
+    }
+  }
+
+  res.render('room', { 
+    roomId: req.params.room,
+    counselorId,
+    counselorName
+  });
 });
 
 // ----------------------------
