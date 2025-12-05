@@ -3,6 +3,10 @@
 // Cloud Run requires absolute URL for Socket.IO
 const socket = io(window.location.origin);
 
+// ------------------ User identity ------------------
+const urlParams = new URLSearchParams(window.location.search);
+const COUNSELOR_ID = urlParams.get("counselor_id") || null;
+
 // HTML elements
 const videoGrid = document.getElementById('video-grid');
 
@@ -14,7 +18,7 @@ const myPeer = new Peer(undefined, {
   path: '/peerjs',
   config: {
     iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' } // Google's STUN
+      { urls: 'stun:stun.l.google.com:19302' }
     ]
   }
 });
@@ -23,8 +27,8 @@ const myPeer = new Peer(undefined, {
 const myVideo = document.createElement('video');
 myVideo.muted = true;
 
-const peers = {};       // userId -> MediaConnection
-let myStream = null;    // local camera stream
+const peers = {};
+let myStream = null;
 let screenStream = null;
 let screenSharing = false;
 
@@ -57,22 +61,17 @@ navigator.mediaDevices.enumerateDevices()
     myStream = stream;
     addVideoStream(myVideo, myStream);
 
-    // Answer incoming calls
     myPeer.on('call', call => {
       call.answer(myStream);
 
       const video = document.createElement('video');
-      call.on('stream', userVideoStream => {
-        addVideoStream(video, userVideoStream);
-      });
-
-      call.on('close', () => {
-        video.remove();
-      });
+      call.on('stream', userVideoStream => addVideoStream(video, userVideoStream));
+      call.on('close', () => video.remove());
     });
 
-    // When new user joins
-    socket.on('user-connected', userId => {
+    // Updated to accept name + userId
+    socket.on('user-connected', ({ userId, name }) => {
+      console.log(`${name} connected`);
       connectToNewUser(userId, myStream);
     });
   })
@@ -84,7 +83,7 @@ navigator.mediaDevices.enumerateDevices()
 // ------------------ Room & Peer events ------------------
 
 myPeer.on('open', id => {
-  socket.emit('join-room', ROOM_ID, id);
+  socket.emit('join-room', ROOM_ID, id, COUNSELOR_ID); // <-- UPDATED
 });
 
 socket.on('user-disconnected', userId => {
@@ -100,13 +99,8 @@ function connectToNewUser(userId, stream) {
   const call = myPeer.call(userId, stream);
   const video = document.createElement('video');
 
-  call.on('stream', userVideoStream => {
-    addVideoStream(video, userVideoStream);
-  });
-
-  call.on('close', () => {
-    video.remove();
-  });
+  call.on('stream', userVideoStream => addVideoStream(video, userVideoStream));
+  call.on('close', () => video.remove());
 
   peers[userId] = call;
 }
@@ -119,7 +113,6 @@ function addVideoStream(video, stream) {
 
 // ------------------ Toolbar Controls ------------------
 
-// Toggle microphone
 if (muteBtn) {
   muteBtn.addEventListener('click', () => {
     const audioTrack = myStream?.getAudioTracks()[0];
@@ -130,7 +123,6 @@ if (muteBtn) {
   });
 }
 
-// Toggle camera
 if (videoBtn) {
   videoBtn.addEventListener('click', () => {
     const videoTrack = myStream?.getVideoTracks()[0];
@@ -141,7 +133,6 @@ if (videoBtn) {
   });
 }
 
-// Screen sharing
 if (shareBtn) {
   shareBtn.addEventListener('click', async () => {
     try {
@@ -176,14 +167,9 @@ function stopScreenShare() {
 }
 
 function replaceOutgoingVideoTrack(newTrack) {
-  // Update self preview
-  const newPreview = new MediaStream([
-    newTrack,
-    ...myStream.getAudioTracks()
-  ]);
+  const newPreview = new MediaStream([newTrack, ...myStream.getAudioTracks()]);
   myVideo.srcObject = newPreview;
 
-  // Replace video track for all peers
   Object.values(peers).forEach(call => {
     const pc = call.peerConnection;
     const sender = pc.getSenders().find(s => s.track?.kind === 'video');
@@ -201,7 +187,7 @@ if (leaveBtn) {
       socket.disconnect();
       myPeer.destroy();
     } finally {
-      window.location.href = '/'; // redirect home
+      window.location.href = '/';
     }
   });
 }
@@ -222,7 +208,10 @@ if (chatForm) {
     messageInput.value = '';
   });
 
-  socket.on('chat-message', msg => appendMessage(msg));
+  // Updated to handle {name, text}
+  socket.on('chat-message', ({ name, text }) => {
+    appendMessage(`${name}: ${text}`);
+  });
 
   function appendMessage(msg) {
     const li = document.createElement('li');
