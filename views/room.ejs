@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>OpenChatU • Video Room</title>
 
-  <!-- Your room scripts (unchanged) -->
+  <!-- Pass dynamic values from server to front-end -->
   <script>const ROOM_ID = "<%= roomId %>";</script>
+  <script>const COUNSELOR_ID = "<%= counselorId %>";</script>
+
+  <!-- Video room scripts -->
   <script defer src="https://unpkg.com/peerjs@1.2.0/dist/peerjs.min.js"></script>
   <script defer src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script defer src="/script.js"></script>
@@ -167,3 +170,4 @@
   </div>
 </body>
 </html>
+
