@@ -7,7 +7,11 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: '*'
+  }
+});
 
 // PeerJS server setup
 const peerServer = ExpressPeerServer(server, {
@@ -36,7 +40,7 @@ io.on('connection', socket => {
     socket.join(roomId);
     socket.to(roomId).emit('user-connected', userId);
 
-    // 📨 Handle incoming chat messages
+    // Handle chat messages
     socket.on('chat-message', message => {
       socket.to(roomId).emit('chat-message', `Stranger: ${message}`);
     });
@@ -47,8 +51,8 @@ io.on('connection', socket => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
+// Start server on Cloud Run port
+const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
